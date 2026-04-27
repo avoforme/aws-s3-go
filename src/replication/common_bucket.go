@@ -57,6 +57,12 @@ func CreateBucket(
 	bucketName string,
 ) {
 	// TODO: implement this method
+	numberNodes := getNumberNodes()
+	for i := 0; i < numberNodes; i++ {
+		bucketDir := fmt.Sprintf("nodes/%d/%s", i, bucketName)
+		err := os.MkdirAll(bucketDir, os.ModePerm)
+		checkError(err)
+	}
 }
 
 
@@ -77,8 +83,15 @@ func WriteNodeFile(
 	version time.Time,
 ) int {
 	// TODO: implement this method.
+	file := fmt.Sprintf("nodes/%d/%s/%s", nodeIndex, bucketName, fileName)
+	err := os.WriteFile(file, contents, 0644)
+	checkError(err)
 	
-	return 0
+	versionFile := fmt.Sprintf("nodes/%d/%s/%s.version", nodeIndex, bucketName, fileName)
+	err = os.WriteFile(versionFile, []byte(version.Format(time.RFC3339Nano)), 0644)
+	checkError(err)
+
+	return len(contents)
 }
 
 /*
@@ -92,7 +105,17 @@ func ReadNodeFile(
 	fileName string,
 ) ([]byte, time.Time) {
 	// TODO: implement this method.
+	file := fmt.Sprintf("nodes/%d/%s/%s", nodeIndex, bucketName, fileName)
+	data, err := os.ReadFile(file)
+	checkError(err)
 
-	return []byte("TODO"), time.Now()
+	versionFile := fmt.Sprintf("nodes/%d/%s/%s.version", nodeIndex, bucketName, fileName)
+	versionBytes, err := os.ReadFile(versionFile)
+	checkError(err)
+
+	parsedTime, err := time.Parse(time.RFC3339Nano, string(versionBytes))
+	checkError(err)
+
+	return data, parsedTime
 }
 
