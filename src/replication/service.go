@@ -35,14 +35,16 @@ func RequestWriteFile(bucketName string, fileName string, fileContents []byte) {
 	mu.Lock()
     defer mu.Unlock()
 
-	numberNodes := getNumberNodes()
+	// numberNodes := getNumberNodes()
+	writeNodes := getWriteQuorum()
 	var wg sync.WaitGroup
-	for i := range numberNodes {
+	timeNow := time.Now()
+	for i := range writeNodes {
 		wg.Add(1)
 		go func(i int, timeNow time.Time) {
 			defer wg.Done()
 			WriteNodeFile(i, bucketName, fileName, fileContents, timeNow)
-		} (i, time.Now())
+		} (i, timeNow)
 
 	}
 
@@ -64,7 +66,7 @@ func RequestReadFile(bucketName string, fileName string) []byte {
     defer mu.Unlock()
 
 	// numberNodes := getNumberNodes()
-	
+
 	// just read from first node (enough for this test)
     data, _ := ReadNodeFile(0, bucketName, fileName)
     return data
