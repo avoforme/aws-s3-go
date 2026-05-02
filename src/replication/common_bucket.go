@@ -106,16 +106,24 @@ func ReadNodeFile(
 ) ([]byte, time.Time) {
 	// TODO: implement this method.
 	file := fmt.Sprintf("nodes/%d/%s/%s", nodeIndex, bucketName, fileName)
-	data, err := os.ReadFile(file)
-	checkError(err)
 
-	versionFile := fmt.Sprintf("nodes/%d/%s/%s.version", nodeIndex, bucketName, fileName)
-	versionBytes, err := os.ReadFile(versionFile)
-	checkError(err)
+    data, err := os.ReadFile(file)
+    if err != nil {
+        return nil, time.Time{}
+    }
 
-	parsedTime, err := time.Parse(time.RFC3339Nano, string(versionBytes))
-	checkError(err)
+    versionFile := fmt.Sprintf("nodes/%d/%s/%s.version", nodeIndex, bucketName, fileName)
 
-	return data, parsedTime
+    versionBytes, err := os.ReadFile(versionFile)
+    if err != nil {
+        return nil, time.Time{}
+    }
+
+    parsedTime, err := time.Parse(time.RFC3339Nano, string(versionBytes))
+    if err != nil {
+        return nil, time.Time{}
+    }
+
+    return data, parsedTime
 }
 

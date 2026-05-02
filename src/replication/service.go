@@ -3,6 +3,7 @@ package replication
 import (
 	"sync"
 	"time"
+	"math/rand"
 )
 
 /*
@@ -36,10 +37,12 @@ func RequestWriteFile(bucketName string, fileName string, fileContents []byte) {
     defer mu.Unlock()
 
 	// numberNodes := getNumberNodes()
-	writeNodes := getWriteQuorum()
+	writeNodeSize := getWriteQuorum()
 	var wg sync.WaitGroup
 	timeNow := time.Now()
-	for i := range writeNodes {
+
+	writeNodeList := rand.Perm(getNumberNodes())[:writeNodeSize]
+	for _, i := range writeNodeList {
 		wg.Add(1)
 		go func(i int, timeNow time.Time) {
 			defer wg.Done()
@@ -65,9 +68,53 @@ func RequestReadFile(bucketName string, fileName string) []byte {
 	mu.Lock()
     defer mu.Unlock()
 
-	// numberNodes := getNumberNodes()
+    readNodeSize := getReadQuorum()
+	readNodeList := rand.Perm(getNumberNodes())[:readNodeSize]
 
-	// just read from first node (enough for this test)
-    data, _ := ReadNodeFile(0, bucketName, fileName)
-    return data
+    type Result struct {
+        data      []byte
+        timestamp time.Time
+    }
+
+    results := []Result{}
+    var wg sync.WaitGroup
+    var resultMu sync.Mutex
+
+    for _, node := range readNodeList {
+        wg.Add(1)
+
+        go func(n int) {
+            defer wg.Done()
+
+            data, metadata := ReadNodeFile(n, bucketName, fileName)
+
+
+			if len(data) == 0 {
+				return
+			}
+
+            resultMu.Lock()
+            results = append(results, Result{
+                data: data,
+                timestamp: metadata,
+            })
+            resultMu.Unlock()
+        }(node)
+    }
+
+    wg.Wait()
+
+	if len(results) == 0 {
+		return nil
+	}
+
+    newest := results[0]
+
+    for _, r := range results {
+        if r.timestamp.After(newest.timestamp) {
+            newest = r
+        }
+    }
+
+    return newest.data
 }
